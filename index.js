@@ -1,6 +1,6 @@
 import express from "express";
 import 'dotenv/config'
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import cors from "cors"
 
 
@@ -34,6 +34,28 @@ app.post("/create-event", async (req, res) => {
 })
 
 
+            // All events data
+app.get("/events", async (req, res) => {
+    const result = await eventsColection.find().toArray();
+    res.send(result);
+})
+
+
+
+            // Single data by id
+app.get("/events/:id", async (req, res) => {
+    const data = req.body;
+    const {id} = req.params;
+
+    const result = await eventsColection.findOne(
+        {_id: new ObjectId(id)},
+    );
+    res.send(result);
+})
+
+
+
+        // Start code
 app.get('/', (req, res) => {
   res.send({msg: "Server is running fine"})
 })
