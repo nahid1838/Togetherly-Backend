@@ -1,10 +1,14 @@
 import express from "express";
 import 'dotenv/config'
 import { MongoClient } from 'mongodb';
+import cors from "cors"
 
 
 const app = express()
 const PORT = process.env.PORT || 5000
+
+app.use(express.json())
+app.use(cors())
 
 
 const client = new MongoClient(process.env.MONGODB_URI);
@@ -20,8 +24,14 @@ export async function connectToMongoDB() {
 
 const mongoClient = await connectToMongoDB();
 const db = mongoClient.db("togetherly");
-
 const eventsColection = db.collection("events")
+
+app.post("/create-event", async (req, res) => {
+    const data = req.body;
+
+    const result = await eventsColection.insertOne(data);
+    res.send(result);
+})
 
 
 app.get('/', (req, res) => {
