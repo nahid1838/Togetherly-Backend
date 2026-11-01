@@ -44,13 +44,27 @@ app.get("/events", async (req, res) => {
 
             // Single data by id
 app.get("/events/:id", async (req, res) => {
-    const data = req.body;
     const {id} = req.params;
+
+    console.log(id)
 
     const result = await eventsColection.findOne(
         {_id: new ObjectId(id)},
     );
     res.send(result);
+})
+
+
+
+                // Single user all data
+app.get("/event/:email", async (req, res) => {
+    const { email } = req.params;
+
+    console.log(email)
+
+    const result = await eventsColection.find({userEmail: (email)}).toArray();
+
+    res.json(result);
 })
 
 
