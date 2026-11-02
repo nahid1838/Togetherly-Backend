@@ -69,7 +69,35 @@ app.get("/event/:email", async (req, res) => {
 
 
 
-        // Start code
+  // Update event by id
+app.patch("/events/:id", async (req, res) => {
+    const { id } = req.params;
+
+    const { title, description, eventType, thumbnail, location, date } = req.body;
+
+    const result = await eventsColection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { title, description, eventType, thumbnail, location, date } }
+    );
+
+    if (result.matchedCount === 0) {
+        return res.status(404).send({ msg: "Event not found" });
+    }
+
+    res.json({ msg: "Event updated", modifiedCount: result.modifiedCount });
+})
+
+
+
+app.delete("/events/:id", async (req, res) => {
+  const {id} = req.params;
+
+  const result = await eventsColection.deleteOne({_id: new ObjectId(id)});
+  res.json(result);
+})
+
+
+        // Starter code
 app.get('/', (req, res) => {
   res.send({msg: "Server is running fine"})
 })
