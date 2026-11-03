@@ -42,7 +42,7 @@ const verifyToken = async (req, res, next) => {
         return res.status(401).send({msg: "Unauthorized!"})
     }
 
-    const JWKS = createRemoteJWKSet(new URL('http://localhost:3000/api/auth/jwks'));
+    const JWKS = createRemoteJWKSet(new URL(`${process.env.CLIENT_URL}/api/auth/jwks`));
 
     try {
         const {payload} = await jwtVerify(token, JWKS)
@@ -63,30 +63,7 @@ app.post("/create-event", verifyToken, async (req, res) => {
 })
 
 
-            // All events data — ?upcoming=true → only today's & future events
-// app.get("/events", async (req, res) => {
-//     try {
-//         const query = {};
 
-//         if (req.query.upcoming === "true") {
-//             const now = new Date();
-//             const pad = (n) => String(n).padStart(2, "0");
-//             const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-
-//             query.date = { $gte: today };
-//         }
-
-//         const events = await eventsColection
-//             .find(query)
-//             .sort({ date: 1 })
-//             .toArray();
-
-//         res.json(events);
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: "Failed to fetch events" });
-//     }
-// })
 
         // All events
 app.get("/events", async(req, res) => {
