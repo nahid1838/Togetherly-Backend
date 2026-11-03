@@ -2,6 +2,7 @@ import express from "express";
 import 'dotenv/config'
 import { MongoClient, ObjectId } from 'mongodb';
 import cors from "cors"
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 
 const app = express()
@@ -27,7 +28,34 @@ const db = mongoClient.db("togetherly");
 const eventsColection = db.collection("events")
 const joinedEventsCollection = db.collection("joinedEvents")
 
-app.post("/create-event", async (req, res) => {
+                // Secure Api
+const verifyToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization
+
+    if(!authHeader) {
+        return res.status(401).send({msg: "Unauthorized!"})
+    }
+
+    const token = authHeader.split(" ")[1];
+    
+    if(!token) {
+        return res.status(401).send({msg: "Unauthorized!"})
+    }
+
+    const JWKS = createRemoteJWKSet(new URL('http://localhost:3000/api/auth/jwks'));
+
+    try {
+        const {payload} = await jwtVerify(token, JWKS)
+        next();
+    } catch (error) {
+        return res.status(500).send({msg: "Server Error!"});
+    }
+
+}
+
+
+
+app.post("/create-event", verifyToken, async (req, res) => {
     const data = req.body;
 
     const result = await eventsColection.insertOne(data);
@@ -135,7 +163,7 @@ app.get("/event/:email", async (req, res) => {
 
 
   // Update event by id
-app.patch("/events/:id", async (req, res) => {
+app.patch("/events/:id", verifyToken, async (req, res) => {
     const { id } = req.params;
 
     const { title, description, eventType, thumbnail, location, date } = req.body;
@@ -154,7 +182,7 @@ app.patch("/events/:id", async (req, res) => {
 
 
           // Delete event
-app.delete("/events/:id", async (req, res) => {
+app.delete("/events/:id", verifyToken, async (req, res) => {
   const {id} = req.params;
 
   const result = await eventsColection.deleteOne({_id: new ObjectId(id)});
@@ -212,7 +240,8 @@ app.delete("/joined-events/:eventId/:email", async (req, res) => {
 
 
             // All events a user has joined
-app.get("/joined-events/:email", async (req, res) => {
+app.get("/joined-events/:email", verifyToken, async (req, res) => {
+    
     const { email } = req.params;
 
     const result = await joinedEventsCollection
