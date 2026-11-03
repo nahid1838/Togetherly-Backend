@@ -25,6 +25,7 @@ export async function connectToMongoDB() {
 const mongoClient = await connectToMongoDB();
 const db = mongoClient.db("togetherly");
 const eventsColection = db.collection("events")
+const joinedEventsCollection = db.collection("joinedEvents")
 
 app.post("/create-event", async (req, res) => {
     const data = req.body;
@@ -34,11 +35,75 @@ app.post("/create-event", async (req, res) => {
 })
 
 
-            // All events data
-app.get("/events", async (req, res) => {
-    const result = await eventsColection.find().toArray();
-    res.send(result);
+            // All events data — ?upcoming=true → only today's & future events
+// app.get("/events", async (req, res) => {
+//     try {
+//         const query = {};
+
+//         if (req.query.upcoming === "true") {
+//             const now = new Date();
+//             const pad = (n) => String(n).padStart(2, "0");
+//             const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+//             query.date = { $gte: today };
+//         }
+
+//         const events = await eventsColection
+//             .find(query)
+//             .sort({ date: 1 })
+//             .toArray();
+
+//         res.json(events);
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: "Failed to fetch events" });
+//     }
+// })
+
+        // All events
+app.get("/events", async(req, res) => {
+  const result = await eventsColection.find().toArray();
+  res.send(result);
 })
+
+
+app.get("/upcoming-events", async (req, res) => {
+    try {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+        const events = await eventsColection
+            .find({ date: { $gte: today } })
+            .sort({ date: 1 })
+            .toArray();
+
+        res.json(events);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to fetch upcoming events" });
+    }
+});
+
+// 3. Latest 6 upcoming events (home page er jonno)
+app.get("/featured-events", async (req, res) => {
+    try {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+        const events = await eventsColection
+            .find({ date: { $gte: today } })
+            .sort({ date: 1 })
+            .limit(6)
+            .toArray();
+
+        res.json(events);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to fetch featured events" });
+    }
+});
 
 
 
@@ -88,13 +153,88 @@ app.patch("/events/:id", async (req, res) => {
 })
 
 
-
+          // Delete event
 app.delete("/events/:id", async (req, res) => {
   const {id} = req.params;
 
   const result = await eventsColection.deleteOne({_id: new ObjectId(id)});
   res.json(result);
 })
+
+
+
+
+
+
+
+            // Join an event — store user + event data
+app.post("/joined-events", async (req, res) => {
+    const { userEmail, userName, userImageUrl, event } = req.body;
+
+    if (!userEmail || !event) {
+        return res.status(400).send({ msg: "Missing user or event data" });
+    }
+
+    // One user can join the same event only once
+    const alreadyJoined = await joinedEventsCollection.findOne({
+        userEmail,
+        eventId: event._id,
+    });
+
+    if (alreadyJoined) {
+        return res.status(400).send({ msg: "Already joined this event" });
+    }
+
+    const result = await joinedEventsCollection.insertOne({
+        userEmail,
+        userName,
+        userImageUrl,
+        eventId: event._id,   // string — matches what the frontend sends back
+        event,                // full event snapshot, so the joined page needs no joins
+        joinedAt: new Date(),
+    });
+
+    res.send(result);
+})
+
+
+            // Leave an event — remove that user's join
+app.delete("/joined-events/:eventId/:email", async (req, res) => {
+    const { eventId, email } = req.params;
+
+    const result = await joinedEventsCollection.deleteOne({
+        userEmail: email,
+        eventId,
+    });
+
+    res.json(result);
+})
+
+
+            // All events a user has joined
+app.get("/joined-events/:email", async (req, res) => {
+    const { email } = req.params;
+
+    const result = await joinedEventsCollection
+        .find({ userEmail: email })
+        .toArray();
+
+    res.json(result);
+})
+
+// All joins for one event (count + avatars on the details page)
+app.get("/joined-events/event/:eventId", async (req, res) => {
+    const { eventId } = req.params;
+
+    const result = await joinedEventsCollection
+        .find({ eventId })
+        .project({ userEmail: 1, userName: 1, userImageUrl: 1, joinedAt: 1 })
+        .toArray();
+
+    res.json(result);
+});
+
+
 
 
         // Starter code
